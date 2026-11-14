@@ -1,66 +1,54 @@
-# Token Launch Radar — radar-2
+# Token Radar
 
-A token launch radar for make.fun `token-radar-01`: read the sealed DefiLlama
-snapshot, rank every pre-token protocol by implied value, and hand in a
-dashboard a reader can use to farm it.
+A token launch radar: it reads a sealed snapshot of DeFi protocols, ranks the
+protocols that record no token by what their launch would be worth, and gives
+each one a seven-step farm plan.
 
-## Model (radar-2, comparables)
+## The model
 
-Implied value follows only from the snapshot's own figures, by category
-comparables — no protocol name is ever special-cased:
+Implied value = TVL × peer × growth × maturity × size × chains.
+
+- **Peer** — for the protocol's category, the median market-cap-to-TVL ratio
+  of that category's live-token protocols, each ratio clipped to 0.02–2.0,
+  shrunk toward the global median with 5 pseudo-observations, capped to
+  0.05–1.0. Categories with fewer than 3 live peers take the global median.
+  The global median is the median of the live-token ratios inside the
+  credible band (0.02, 2.0).
+- **Growth** — 1 + the 7-day TVL change (clamped to −50%…+80%) × 0.4 ÷ 100.
+- **Maturity** — 0.7 + min(age in days, 1460) ÷ 1460 × 0.3.
+- **Size** — TVL in billions to the power −0.07, clamped to 0.75–1.20.
+- **Chains** — 1 + 0.02 × min(chain count, 5).
+
+Every multiplier is rounded to 4 decimals before the value is computed, so
+the dashboard can recompute any row's value exactly from the multipliers the
+row carries. The board ranks the whole 40-protocol watchlist plus every
+rankable pre-token protocol below the $50M floor, except bridged products.
+Protocols that record a token are never ranked; the 24 largest by market cap
+are set aside in the live-token view.
+
+"Records no token" describes the snapshot's record, never proof that a
+protocol has no token. The implied value is this radar's own claim, not a
+prediction of a launch or a price.
+
+## Run it
 
 ```
-peer       = category median market-cap / TVL among the snapshot's live-token
-             protocols (ratio clipped to [0.02, 2.0], shrunk toward the global
-             median by 5 pseudo-observations, capped to [0.05, 1.0])
-implied    = round( tvl_usd x peer
-             x (1 + clamp(change_7d, -50, 80) / 100 x 0.4)
-             x (0.7 + min(age_days, 1460) / 1460 x 0.3)
-             x clamp((tvl_usd / 1e9) ^ -0.07, 0.75, 1.20)
-             x (1 + 0.02 x min(chains, 5)) )
+mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input path/to/snapshot.json
 ```
 
-Every multiplier is rounded to 4 decimals before the implied value is
-computed, and board.json carries those rounded figures — the dashboard
-recomputes each row from them alone, so its number always equals the board's
-to the dollar (verified for all 226 rows).
-
-A lending protocol is not priced like a bridge: the market pays different
-multiples per category (Lending 0.13, Dexs 0.34, Liquid Staking 0.04,
-Bridge ~0.99 in this snapshot), and the snapshot itself says what they are.
-
-## Board
-
-- 226 rows: all 40 watchlist protocols, plus every rankable pre-token
-  protocol below the $50M floor (186 early rows)
-- 24 live-token protocols set aside with their market caps, never mixed
-  into the ranking
-- 7-step farm plan per protocol: fresh wallet, the category action with
-  capital and gas, points/quests join, weekly qualifying action, hold
-  window, safe claim, farm log — each step states its cost and time
-
-## Run
-
-```sh
-mkdir -p out && MAKEFUN_OUTPUT_DIR=out node main.ts --input <snapshot.json>
-```
-
-Node 22, standard library only, no network. Deterministic: two runs write
-byte-identical output. Writes `board.json`, `data.js`, `dashboard/`,
-`screenshots/` and `dossier.json` to the output directory.
-
-## Dashboard
-
-Static page, no network: sortable/filterable board, detail drawer for every
-protocol (model breakdown + farm plan), live-token view, and a peer-multiples
-table. Screenshots in `screenshots/`: the board, a protocol detail view, and
-a filtered (Dexs) view — all taken from this dashboard at 1440x900.
+`--input` is the snapshot file. Without it, the program reads
+`MAKEFUN_INPUT_DIR` (a file, or a directory holding `snapshot.json`), else
+the default input location. The output directory is `MAKEFUN_OUTPUT_DIR`,
+else the default output location. The program needs Node 22 and nothing
+else: standard library only, no network, and two runs write the same bytes.
 
 ## Files
 
-- `main.ts` — entrypoint (reads the snapshot, writes the board + dossier)
-- `lib/model.ts` — the radar-2 model, farm plans, board gate
-- `vendor/makefun-board.ts` — make.fun dossier builder (from the kit)
-- `dashboard/` — the static page (index.html, app.css, app.js)
-- `screenshots/` — the three screenshots of this dashboard
-- `LICENSE` — MIT
+- `main.ts` — entrypoint: reads the snapshot, writes the bundle.
+- `lib/model.ts` — the value model, the board builder, and the farm plans.
+- `vendor/makefun-board.ts` — the dossier builder, shipped with the kit.
+- `dashboard/index.html`, `dashboard/app.css`, `dashboard/app.js` — the page.
+  It reads its data from `data.js` beside the dashboard directory.
+- `screenshots/` — the board view, a detail view, and a filtered view.
+- `board.json`, `data.js`, `dossier.json` — written into the output directory
+  on each run, not stored in the repository.

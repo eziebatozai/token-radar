@@ -3,12 +3,107 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Token Radar: pre-token protocols ranked by implied value</title>
+<title>Token Radar — pre-token protocols ranked by implied value</title>
 <link rel="stylesheet" href="app.css">
 </head>
 <body>
-<a class="skip" href="#board">Skip to the board</a>
-<main id="board" tabindex="-1" aria-busy="true"></main>
+<header class="top">
+  <div>
+    <h1>TOKEN RADAR</h1>
+    <p class="tag">Which pre-token protocol is worth farming next — and what to do about it.</p>
+  </div>
+  <div class="stats" id="stats"></div>
+</header>
+
+<nav class="tabs" aria-label="Views">
+  <button data-view="board" class="active" type="button">Board</button>
+  <button data-view="live" type="button">Live tokens</button>
+  <button data-view="peers" type="button">Peer multiples</button>
+  <button data-view="method" type="button">Method</button>
+</nav>
+
+<main>
+  <section id="view-board" class="view">
+    <div class="controls">
+      <label>Search <input id="q" type="search" placeholder="Name, slug or category" autocomplete="off"></label>
+      <label>Category <select id="cat"><option value="">All categories</option></select></label>
+      <label class="check"><input id="wl" type="checkbox"> Watchlist only</label>
+      <span class="count" id="count"></span>
+    </div>
+    <div class="tablewrap">
+      <table id="board">
+        <thead>
+          <tr>
+            <th data-sort="rank">Rank</th>
+            <th data-sort="name">Protocol</th>
+            <th data-sort="category">Category</th>
+            <th data-sort="tvl_usd">TVL</th>
+            <th data-sort="change_7d">7d</th>
+            <th data-sort="implied_value_usd">Implied value</th>
+            <th data-sort="peer">Peer</th>
+          </tr>
+        </thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p class="hint">Click a row to open its detail drawer: multiplier breakdown, recomputed value, and the seven farm steps.</p>
+  </section>
+
+  <section id="view-live" class="view" hidden>
+    <h2>Live tokens, set aside</h2>
+    <p>These protocols already record a token, so they are never ranked. The 24 largest by market cap are shown with their market caps, for comparison with the board.</p>
+    <div class="tablewrap">
+      <table id="livetab">
+        <thead>
+          <tr><th>#</th><th>Protocol</th><th>Symbol</th><th>Category</th><th>TVL</th><th>Market cap</th><th>Mcap / TVL</th></tr>
+        </thead>
+        <tbody id="liverows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-peers" class="view" hidden>
+    <h2>Peer multiples by category</h2>
+    <p>Each category's peer multiple is the median market-cap-to-TVL ratio of its live-token protocols, clipped to 0.02–2.0, shrunk toward the global median with 5 pseudo-observations, and capped to 0.05–1.0. Categories with fewer than 3 live peers take the global median outright.</p>
+    <div class="tablewrap">
+      <table id="peerstab">
+        <thead>
+          <tr><th>Category</th><th>Live peers</th><th>Median ratio</th><th>Peer multiple</th></tr>
+        </thead>
+        <tbody id="peerrows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="view-method" class="view" hidden>
+    <h2>How the radar works</h2>
+    <h3>The value model</h3>
+    <p>A protocol's implied value is its TVL times five multipliers:</p>
+    <ol>
+      <li><b>Peer</b> — the category peer multiple: the median market-cap-to-TVL ratio of the category's live-token protocols, each ratio clipped to 0.02–2.0, shrunk toward the global median with 5 pseudo-observations, capped to 0.05–1.0. Categories with fewer than 3 live peers take the global median.</li>
+      <li><b>Growth</b> — 1 + the 7-day TVL change (clamped to −50%…+80%) × 0.4 ÷ 100.</li>
+      <li><b>Maturity</b> — 0.7 + min(age in days, 1460) ÷ 1460 × 0.3. Older protocols that still record no token have waited longer, so they count for more.</li>
+      <li><b>Size</b> — TVL in billions raised to −0.07, clamped to 0.75–1.20. Very large TVL is discounted slightly, small TVL is lifted slightly.</li>
+      <li><b>Chains</b> — 1 + 0.02 × min(chain count, 5).</li>
+    </ol>
+    <p>Every multiplier is rounded to 4 decimals before the value is computed, and each board row carries its rounded multipliers, so the detail drawer recomputes the row's value exactly from them alone. The result is rounded to a whole dollar.</p>
+    <h3>What gets ranked</h3>
+    <p>The board ranks every protocol that records no token: the whole 40-protocol watchlist (TVL at or above $50M), plus every rankable pre-token protocol below that floor, except bridged products — a bridge moves a token that already exists, so it is not a launch of its own. Protocols above the floor that the watchlist leaves out stay out for the same reason the watchlist leaves them out. Protocols that record a token are set aside with their market caps and never ranked.</p>
+    <h3>What the numbers do not say</h3>
+    <p>"Records no token" is a statement about the snapshot's record, never proof that a protocol has no token. The implied value is this radar's own claim about what a launch would be worth if the protocol's record stayed as it is; it does not predict whether or when a token is issued, and it is not a price. Farm plans are generic steps with stated costs and times — check the protocol's own app before acting, and never approve an unlimited spend.</p>
+  </section>
+</main>
+
+<aside id="drawer" hidden aria-label="Protocol detail">
+  <button id="close" type="button" aria-label="Close detail">×</button>
+  <div id="detail"></div>
+</aside>
+<div id="backdrop" hidden></div>
+
+<footer>
+  <p>Token Radar — implied values are this radar's own claim, not a prediction of a launch or a price. Snapshot date and counts are shown above.</p>
+</footer>
+
 <script src="../data.js"></script>
 <script src="app.js"></script>
 </body>
